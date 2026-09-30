@@ -1,0 +1,217 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exports\RekapDanaKwitansiExport;
+use App\Exports\RekapRiwayatKwitansiExport;
+use App\Http\Requests\DocumentFilterRequest;
+use App\Http\Requests\StoreKwitansiRequest;
+use App\Models\Kwitansi;
+use App\Models\PesertaPPDB;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
+use PDF;
+
+class KwitansiController extends Controller
+{
+    // show kwitansi   \
+    // show kwitansi
+    public function showPesertaDiterima(DocumentFilterRequest $request)
+    {
+        $tahun = $request->input('tahun', now()->year);
+        $search = $request->input('search');
+
+        $pesertappdb = PesertaPPDB::with('kwitansi')
+            ->where('diterima', 1)
+            ->whereYear('created_at', $tahun)
+            ->when($search, function ($query, $search) {
+                $query->where('nama_lengkap', 'like', "%{$search}%")
+                    ->orWhere('no_pendaftaran', 'like', "%{$search}%")
+                    ->orWhere('asal_sekolah', 'like', "%{$search}%");
+            })
+            ->latest()
+            ->paginate($request->input('per_page', 10))
+            ->withQueryString();
+
+        $years = range(now()->year, now()->year - 5);
+
+        $kwitansies = Kwitansi::whereHas('pesertaPpdb', function ($q) use ($tahun) {
+            $q->where('diterima', 1)
+                ->whereYear('created_at', $tahun);
+        })->whereNull('deleted_at')->get();
+
+        $danaKelola = $kwitansies->sum('nominal');
+
+        $jenisPembayaran = $kwitansies
+            ->groupBy(fn ($item) => Str::title($item->jenis_pembayaran))
+            ->map(fn ($group) => [
+                'count' => $group->count(),
+                'total' => $group->sum('nominal'),
+            ]);
+
+        return inertia('Admin/Kwitansi/Index', compact(
+            'pesertappdb', 'tahun', 'years',
+            'danaKelola', 'jenisPembayaran'
+        ));
+    }
+
+    public function tambahKwitansi($uuid)
+    {
+        $peserta = PesertaPPDB::with(['kwitansi' => fn ($query) => $query->withTrashed()->latest()->with('penerima', 'deletedBy')])->findOrFail($uuid);
+
+        return inertia('Admin/Kwitansi/Create', compact('peserta'));
+    }
+
+    public function storeKwitansi(StoreKwitansiRequest $request, $uuid)
+    {
+        $data = $request->validated();
+
+        $peserta = PesertaPPDB::findOrFail($uuid);
+
+        $peserta->kwitansi()->create($data + ['user_id' => $request->user()->id]);
+
+        session()->flash('success', 'Kwitansi Berhasil di Tambahkan');
+
+        return back();
+    }
+
+    public function hapusKwitansi($id)
+    {
+        /** @var Kwitansi $kwitansi */
+        $kwitansi = Kwitansi::findOrFail($id);
+
+        $kwitansi->delete();
+
+        session()->flash('success', 'Kwitansi Berhasil di Hapus');
+
+        return back();
+    }
+
+    public function cetakKwitansi($uuid)
+    {
+        $pesertappdb = PesertaPPDB::with(['kwitansi'])->where('diterima', 1)->findOrFail($uuid);
+
+        // $pdf = PDF::loadView('pdf.cetak-kwitansi', $peserta);
+
+        // return $pdf->stream('kwitansi-' . Str::slug($peserta->nama_lengkap) . '.pdf');
+
+        return view('pdf.cetak-kwitansi', compact('pesertappdb'));
+    }
+
+    public function cetakKwitansiSingle($uuid, $id)
+    {
+        $pesertappdb = PesertaPPDB::with([
+            'kwitansi' => function ($query) use ($id) {
+                $query->whereId($id);
+            },
+        ])->where('diterima', 1)->findOrFail($uuid);
+
+        // $pdf = PDF::loadView('pdf.cetak-kwitansi', $peserta);
+
+        // return $pdf->stream('kwitansi-' . Str::slug($peserta->nama_lengkap) . '.pdf');
+
+        return view('pdf.cetak-kwitansi', compact('pesertappdb'));
+    }
+
+    /**
+     * rekap kwitansi
+     *
+     * @return void
+     */
+    public function rekapKwitansi(DocumentFilterRequest $request)
+    {
+        $tahun = $request->input('tahun', now()->year);
+        $search = $request->input('search');
+        $jenisPembayaranFilter = $request->input('jenis_pembayaran');
+        $statusFilter = $request->input('status');
+
+        $kwitansiesAll = Kwitansi::withTrashed()
+            ->has('pesertaPpdb')
+            ->whereYear('created_at', $tahun)
+            ->get();
+
+        $kwitansiesActive = $kwitansiesAll->filter(fn ($d) => is_null($d->deleted_at));
+
+        $danaKelola = $kwitansiesActive->sum('nominal');
+
+        $jenisPembayaran = $kwitansiesActive
+            ->groupBy(fn ($item) => Str::title($item->jenis_pembayaran))
+            ->map(fn ($group) => [
+                'count' => $group->count(),
+                'total' => $group->sum('nominal'),
+            ]);
+
+        $kwitansiesHistory = Kwitansi::withTrashed()
+            ->has('pesertaPpdb')
+            ->with(['pesertaPpdb', 'penerima', 'deletedBy'])
+            ->whereYear('created_at', $tahun)
+            ->when($search, function ($query, $search) {
+                $query->whereHas('pesertaPpdb', function ($q) use ($search) {
+                    $q->where('nama_lengkap', 'like', "%{$search}%")
+                        ->orWhere('no_pendaftaran', 'like', "%{$search}%");
+                });
+            })
+            ->when($jenisPembayaranFilter, function ($query, $jenisPembayaranFilter) {
+                $query->where('jenis_pembayaran', $jenisPembayaranFilter);
+            })
+            ->when($statusFilter === 'active', function ($query) {
+                $query->whereNull('deleted_at');
+            })
+            ->when($statusFilter === 'deleted', function ($query) {
+                $query->whereNotNull('deleted_at');
+            })
+            ->latest()
+            ->paginate($request->input('per_page', 50))
+            ->withQueryString();
+
+        $years = range(now()->year, now()->year - 5);
+
+        $allJenisPembayaran = Kwitansi::whereYear('created_at', $tahun)
+            ->pluck('jenis_pembayaran')
+            ->map(fn ($item) => Str::title($item))
+            ->unique()
+            ->values()
+            ->all();
+
+        return inertia('Admin/Kwitansi/Rekap', compact(
+            'kwitansiesHistory', 'danaKelola', 'jenisPembayaran', 'tahun',
+            'years', 'allJenisPembayaran', 'search', 'jenisPembayaranFilter', 'statusFilter'
+        ));
+    }
+
+    public function cetakRekapDanaKwitansi(DocumentFilterRequest $request)
+    {
+        $tahun = $request->input('tahun', now()->year);
+
+        $kwitansies = Kwitansi::withTrashed()
+            ->has('pesertaPpdb')
+            ->whereYear('created_at', $tahun)
+            ->whereNull('deleted_at')
+            ->latest()
+            ->get();
+
+        $danaKelola = $kwitansies->sum('nominal');
+
+        $jenisPembayaran = $kwitansies->map(function ($item) {
+            $item->jenis_pembayaran = Str::title($item->jenis_pembayaran);
+
+            return $item;
+        })->groupBy('jenis_pembayaran');
+
+        return Excel::download(new RekapDanaKwitansiExport($danaKelola, $jenisPembayaran, $tahun), 'rekap-dana-kwitansi-ppdb-'.$tahun.'.xlsx');
+    }
+
+    public function cetakRekapRiwayatKwitansi(DocumentFilterRequest $request)
+    {
+        $tahun = $request->input('tahun', now()->year);
+
+        $kwitansies = Kwitansi::withTrashed()
+            ->has('pesertaPpdb')
+            ->with(['pesertaPpdb', 'penerima', 'deletedBy'])
+            ->whereYear('created_at', $tahun)
+            ->latest()
+            ->get();
+
+        return Excel::download(new RekapRiwayatKwitansiExport($kwitansies, $tahun), 'rekap-riwayat-kwitansi-ppdb-'.$tahun.'.xlsx');
+    }
+}

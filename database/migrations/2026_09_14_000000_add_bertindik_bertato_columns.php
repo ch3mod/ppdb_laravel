@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('peserta_ppdb', function (Blueprint $table) {
+            if (!Schema::hasColumn('peserta_ppdb', 'bertindik')) {
+                $table->boolean('bertindik')->default(false)->after('no_hp');
+            }
+            if (!Schema::hasColumn('peserta_ppdb', 'bertato')) {
+                $table->boolean('bertato')->default(false)->after('bertindik');
+            }
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('peserta_ppdb', function (Blueprint $table) {
+            $table->dropColumn(['bertindik', 'bertato']);
+        });
+    }
+};
