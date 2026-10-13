@@ -1,8 +1,4 @@
 # Teknologi yang Digunakan — PPDB SDN Pangauban 02
-
-Dokumen ini merangkum teknologi pembangun Sistem Penerimaan Peserta Didik Baru
-(PPDB) SDN Pangauban 02. Disusun untuk penyesuaian isi skripsi.
-
 ## 1. Arsitektur Sistem
 
 - Aplikasi web monolit: backend dan frontend dalam satu codebase Laravel.

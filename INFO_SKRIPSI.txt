@@ -1,0 +1,149 @@
+ SISTEM INFORMASI PENERIMAAN PESERTA DIDIK BARU (PPDB)
+ SDN PANGAUBAN 02 - RINGKASAN UNTUK KEPERLUAN SKRIPSI
+
+1. IDENTITAS SISTEM
+Nama Sistem   : Sistem Informasi Penerimaan Peserta Didik Baru (PPDB)
+                SDN Pangauban 02
+Jenis         : Aplikasi Web (Web Application)
+Sifat         : Monolit (backend + frontend dalam 1 codebase)
+Repo          : https://github.com/ch3mod/ppdb_laravel.git
+Studi Kasus   : SDN Pangauban 02
+Periode Aktif : 1 Juni - 30 Juni 2026 (dapat diubah di menu Pengaturan)
+
+Pengguna sistem ada 2 peran:
+  a. Publik / Calon Siswa (tanpa login)
+     - Buka landing page, lihat info sekolah & ekstrakurikuler
+     - Isi form pendaftaran online (/register)
+     - Cek status pendaftaran (/cek-status)
+  b. Admin / Operator Sekolah (login)
+     - Login via Fortify, akses /dashboard
+     - Kelola pendaftar, verifikasi berkas, daftar ulang
+     - Kelola kwitansi/pembayaran, ukuran seragam, beasiswa
+     - Cetak PDF, export Excel, kelola ekstrakurikuler & galeri
+     - Pengaturan periode PPDB dan akun
+
+2. BAHASA PEMROGRAMAN DAN TEKNOLOGI
+
+2.1. Backend
+  - Bahasa             : PHP 8.2+ (teruji di PHP 8.3)
+  - Framework          : Laravel 12.x (MVC, Routing, Eloquent ORM,
+                         Migration, Middleware, Validasi, Blade)
+  - Auth               : Laravel Fortify 1.x (login admin)
+  - Jembatan Frontend  : Inertia.js 2.x - laravel adapter
+                         (tanpa REST API terpisah, pakai server-side
+                         routing + props)
+  - Cetak PDF          : barryvdh/laravel-dompdf 3.x
+                         (formulir, kartu, surat, kwitansi, beasiswa)
+  - Export Excel       : maatwebsite/excel 3.x
+  - Route untuk JS     : tightenco/ziggy 2.x (fungsi route() di React)
+  - HTTP Client        : guzzlehttp/guzzle 7.x
+  - Data Dummy         : fakerphp/faker 1.x
+
+2.2. Frontend
+  - Library UI         : React 19 + React DOM 19
+  - Client Inertia     : @inertiajs/react 2.x (navigasi SPA, form)
+  - Bahasa             : TypeScript 5.x + JavaScript (ES Module)
+  - Build Tool         : Vite 8 + @vitejs/plugin-react 5.x
+                         + laravel-vite-plugin 3.x
+  - Styling            : Tailwind CSS 4.x (+ @tailwindcss/vite,
+                         @tailwindcss/forms, tailwindcss-animate)
+  - Komponen UI        : Radix UI 1.x-2.x (basis shadcn/ui, 54 komponen
+                         di resources/js/components/ui)
+  - Ikon               : lucide-react
+  - Tabel Admin        : @tanstack/react-table 8.x
+  - Grafik Dashboard   : recharts 2.x
+  - Form & Validasi    : react-hook-form 7.x + zod 4.x
+                         + @hookform/resolvers
+  - Notifikasi         : sonner 2.x (toast)
+  - Animasi            : gsap 3.x + ScrollTrigger (landing page),
+                         canvas-confetti (halaman sukses)
+  - Tema               : next-themes (dark/light mode)
+  - Tanggal            : date-fns 4.x
+  - Entry point        : resources/css/app.css + resources/js/app.tsx
+
+2.3. Database
+  - RDBMS              : MySQL / MariaDB (setting DB_* di file .env)
+  - Akses Data         : Eloquent ORM (bawaan Laravel 12)
+  - Versioning Skema   : Laravel Migration (database/migrations)
+
+2.4. Tools Pendukung
+  - Dependency PHP     : Composer
+  - Dependency JS      : NPM (Node.js 20+)
+  - Version Control    : Git + GitHub
+  - Testing            : PHPUnit 11 (tests/Feature, tests/Unit)
+  - Rapihin Kode       : Laravel Pint, Laravel Boost, StyleCI
+  - Debugging          : Laravel Debugbar, Telescope, Tinker
+  - CLI                : Artisan (migrate, storage:link, serve, dll)
+  - Dev Server         : php artisan serve + vite (npm run dev)
+  - Production Build   : npm run build / vite build
+
+3. DAFTAR FITUR (untuk Bab Hasil / Fungsional)
+  Publik:
+    1) Landing page + info ekstrakurikuler + filter + lightbox galeri
+    2) Form pendaftaran PPDB online
+    3) Cek status pendaftaran
+    4) Halaman sukses + confetti
+
+  Admin (dashboard):
+    5) Login + pengaturan akun
+    6) Dashboard + grafik (Recharts)
+    7) List/tambah/lihat/edit/hapus pendaftar
+    8) Verifikasi berkas + daftar ulang (terima peserta)
+    9) Ukuran seragam
+    10) Surat, formulir, kartu pendaftaran (cetak satuan + massal PDF)
+    11) Export Excel: peserta, seragam, rekap sekolah, belum daftar ulang
+    12) Beasiswa: akademik, non-akademik, KIP, yatim-piatu + cetak
+    13) Ekstrakurikuler: CRUD + ikon/warna/urutan + upload multi-foto
+    14) Pengaturan PPDB (batas akhir/periode)
+
+4. STRUKTUR FOLDER
+  app/                  -> Models, Http/Controllers, Providers
+  routes/web.php        -> definisi semua URL
+  resources/js/Pages/   -> halaman React (Landing, Pendaftaran, Admin)
+  resources/js/components/ui/ -> 54 komponen shadcn/ui
+  resources/views/      -> Blade template PDF
+  database/migrations/  -> 23 file migrasi skema
+  config/               -> konfigurasi Laravel
+  public/               -> hasil build Vite
+  storage/app/public/   -> file upload galeri
+  tests/                -> PHPUnit Feature/Unit
+  composer.json         -> daftar dependency PHP
+  package.json          -> daftar dependency JS
+  vite.config.js        -> konfigurasi Vite + Tailwind + React
+  .env                  -> konfigurasi APP, DB, MAIL (jangan di-commit)
+
+5. KEBUTUHAN SISTEM (untuk Bab Implementasi)
+  Software:
+    - PHP 8.3+, Composer, Node.js 20+, MySQL/MariaDB, Git, Browser modern
+  Hardware (minimal skripsi):
+    - Laptop/PC dual-core, RAM 4GB (disarankan 8GB), HDD 10GB bebas,
+      koneksi internet untuk install dependency
+  Server (produksi):
+    - VPS/shared hosting support PHP 8.2+ MySQL, SSL, storage link
+
+6. ALUR DATA SINGKAT (untuk Diagram Alir / DFD skripsi)
+  1) User buka / -> controller ambil extracurriculars + photos ->
+     Inertia Landing render
+  2) User buka /register -> isi form -> POST /register ->
+     PendaftaranPPDB@mendaftar -> validasi Form Request ->
+     simpan via Eloquent ke peserta_ppdb -> redirect sukses
+  3) User cek /cek-status -> query by kode/identitas -> tampil status
+  4) Admin login (Fortify) -> /dashboard -> CRUD pendaftar
+  5) Admin verifikasi berkas + daftar ulang
+  6) Admin cetak PDF (dompdf) / export Excel (maatwebsite)
+  7) Admin upload galeri ekstrakurikuler -> simpan storage/public ->
+     tampil di landing dengan filter + lightbox
+
+7. SARAN PENULISAN DI SKRIPSI
+  - Bab 2 (Tinjauan Pustaka): PHP, Laravel MVC, MySQL RDBMS,
+    React SPA, TypeScript, Tailwind CSS, Vite, Inertia.js,
+    Eloquent ORM, PDF & Excel reporting.
+  - Bab 3 (Analisis & Perancangan): gunakan daftar fitur bagian 5
+    sebagai kebutuhan fungsional, 2 peran pengguna sebagai aktor
+    Use Case, tabel bagian 3.3 sebagai rancangan database/ERD,
+    alur bagian 9 sebagai DFD/flowchart.
+  - Bab 4 (Implementasi): kebutuhan sistem bagian 7, instalasi
+    bagian 8, screenshot Landing, Pendaftaran, Cek Status,
+    Dashboard, List Pendaftar, Cetak PDF, Export Excel, Galeri.
+  - Sebutkan versi: PHP 8.3, Laravel 12, React 19, TypeScript 5,
+    Vite 8, Tailwind 4, MySQL/MariaDB, Inertia 2.
